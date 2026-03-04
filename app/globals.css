@@ -1,7 +1,7 @@
-@import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
 
-/* Theme variables */
+/* Theme */
 
 :root {
   --background: #050505;
@@ -9,33 +9,20 @@
   --primary: #7c3aed;
 }
 
-/* Tailwind theme binding */
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --font-sans: "Inter", sans-serif;
-}
-
-/* Base styles */
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Inter", sans-serif;
-  min-height: 100vh;
-  scroll-behavior: smooth;
 }
 
-/* Better text rendering */
+/* Smooth rendering */
 
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Purple custom scrollbar */
+/* Custom scrollbar */
 
 ::-webkit-scrollbar {
   width: 8px;
@@ -52,15 +39,4 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a855f7;
-}
-
-/* Smooth hover animations */
-
-button {
-  transition: all 0.2s ease;
-}
-
-.card-hover:hover {
-  transform: scale(1.02);
-  transition: 0.2s ease;
 }
