@@ -1,45 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Lottie from "lottie-react";
 import heroAnimation from "../animations/hero.json";
 
 export default function Home() {
+
   const [showBoard, setShowBoard] = useState(false);
 
-  if (showBoard) {
-    return <KanbanBoard />;
-  }
+  if (showBoard) return <KanbanBoard />;
 
   return (
     <main className="relative h-screen overflow-hidden bg-black text-white">
 
-      {/* Background Animation */}
-      <div className="absolute inset-0 -z-20">
-        <Lottie animationData={heroAnimation} loop className="w-full h-full opacity-60"/>
+      {/* Animation */}
+      <div className="absolute inset-0 z-0">
+        <Lottie animationData={heroAnimation} loop className="w-full h-full"/>
       </div>
 
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/70 -z-10"/>
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/60 z-10"/>
 
-      {/* Purple Edge Glow */}
-      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-purple-600 opacity-30 blur-[120px] animate-pulse"/>
-      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-purple-700 opacity-30 blur-[120px] animate-pulse"/>
+      {/* Purple glow */}
+      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-purple-600 blur-[140px] opacity-30"/>
+      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-purple-700 blur-[140px] opacity-30"/>
 
-      {/* Hero */}
-      <div className="h-full flex items-center justify-center px-6">
+      <div className="h-full flex items-center justify-center relative z-20">
 
         <div className="backdrop-blur-xl bg-white/10 border border-white/20 p-12 rounded-3xl shadow-2xl text-center max-w-2xl">
 
           <h1 className="text-5xl font-bold mb-6">
             Kanban Task Manager
           </h1>
-
-          <p className="text-gray-300 mb-8 text-lg">
-            Manage your tasks visually using a modern Kanban workflow.
-            Track progress from <span className="text-purple-400 font-semibold">Todo</span> to
-            <span className="text-purple-400 font-semibold"> Done</span>.
-          </p>
 
           <button
             onClick={() => setShowBoard(true)}
@@ -59,33 +51,98 @@ export default function Home() {
 function KanbanBoard() {
 
   const [tasks, setTasks] = useState<{
-    todo: string[];
-    progress: string[];
-    done: string[];
-  }>({
-    todo: [],
-    progress: [],
-    done: []
+    todo: string[],
+    progress: string[],
+    done: string[]
+  }>(() => {
+
+    if (typeof window !== "undefined") {
+
+      const saved = localStorage.getItem("kanbanTasks");
+
+      if (saved) return JSON.parse(saved);
+
+    }
+
+    return {
+      todo: [],
+      progress: [],
+      done: []
+    };
+
   });
 
   const [newTask, setNewTask] = useState("");
 
-  const addTask = () => {
-    if (!newTask.trim()) return;
+  const [moveMenu, setMoveMenu] = useState<{
+    task:string,
+    index:number,
+    column:"todo"|"progress"|"done"
+  } | null>(null);
 
-    setTasks({
-      ...tasks,
-      todo: [...tasks.todo, newTask]
-    });
+  useEffect(()=>{
+
+    localStorage.setItem("kanbanTasks", JSON.stringify(tasks));
+
+  },[tasks]);
+
+  const addTask = () => {
+
+    if(!newTask.trim()) return;
+
+    setTasks(prev=>({
+      ...prev,
+      todo:[...prev.todo,newTask]
+    }));
 
     setNewTask("");
+
+  };
+
+  const handleEnter = (e:any)=>{
+    if(e.key==="Enter") addTask();
+  };
+
+  const deleteTask = (column:"todo"|"progress"|"done", index:number)=>{
+
+    setTasks(prev=>{
+
+      const updated = {...prev};
+
+      updated[column] = updated[column].filter((_,i)=>i!==index);
+
+      return updated;
+
+    });
+
+  };
+
+  const moveTask = (destination:"todo"|"progress"|"done")=>{
+
+    if(!moveMenu) return;
+
+    const {task,index,column} = moveMenu;
+
+    setTasks(prev=>{
+
+      const updated = {...prev};
+
+      updated[column] = updated[column].filter((_,i)=>i!==index);
+
+      updated[destination] = [...updated[destination],task];
+
+      return updated;
+
+    });
+
+    setMoveMenu(null);
+
   };
 
   return (
 
     <div className="min-h-screen bg-black text-white p-10 relative overflow-hidden">
 
-      {/* Purple glow background */}
       <div className="absolute -top-32 -left-32 w-[400px] h-[400px] bg-purple-600 blur-[120px] opacity-30"/>
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-700 blur-[120px] opacity-30"/>
 
@@ -99,7 +156,8 @@ function KanbanBoard() {
 
         <input
           value={newTask}
-          onChange={(e) => setNewTask(e.target.value)}
+          onChange={(e)=>setNewTask(e.target.value)}
+          onKeyDown={handleEnter}
           placeholder="Enter a task..."
           className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 w-80 backdrop-blur-md focus:outline-none"
         />
@@ -113,23 +171,99 @@ function KanbanBoard() {
 
       </div>
 
+      {/* Move popup */}
+
+      {moveMenu && (
+
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
+
+          <div className="bg-gray-900 p-6 rounded-xl">
+
+            <h3 className="mb-4 font-semibold">
+              Move task to:
+            </h3>
+
+            <div className="flex gap-4">
+
+              <button
+                onClick={()=>moveTask("todo")}
+                className="bg-yellow-500 px-4 py-2 rounded-lg"
+              >
+                Todo
+              </button>
+
+              <button
+                onClick={()=>moveTask("progress")}
+                className="bg-blue-500 px-4 py-2 rounded-lg"
+              >
+                In Progress
+              </button>
+
+              <button
+                onClick={()=>moveTask("done")}
+                className="bg-green-500 px-4 py-2 rounded-lg"
+              >
+                Done
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
       {/* Board */}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
 
-        <Column title="Todo" tasks={tasks.todo}/>
-        <Column title="In Progress" tasks={tasks.progress}/>
-        <Column title="Done" tasks={tasks.done}/>
+        <Column
+          title="Todo"
+          column="todo"
+          tasks={tasks.todo}
+          deleteTask={deleteTask}
+          setMoveMenu={setMoveMenu}
+        />
+
+        <Column
+          title="In Progress"
+          column="progress"
+          tasks={tasks.progress}
+          deleteTask={deleteTask}
+          setMoveMenu={setMoveMenu}
+        />
+
+        <Column
+          title="Done"
+          column="done"
+          tasks={tasks.done}
+          deleteTask={deleteTask}
+          setMoveMenu={setMoveMenu}
+        />
 
       </div>
 
     </div>
+
   );
 }
 
-function Column({ title, tasks }:{ title:string, tasks:string[] }) {
+function Column({
+  title,
+  column,
+  tasks,
+  deleteTask,
+  setMoveMenu
+}:{
+  title:string,
+  column:"todo"|"progress"|"done",
+  tasks:string[],
+  deleteTask:any,
+  setMoveMenu:any
+}){
 
-  return (
+  return(
 
     <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl p-6">
 
@@ -137,7 +271,7 @@ function Column({ title, tasks }:{ title:string, tasks:string[] }) {
         {title}
       </h3>
 
-      {tasks.length === 0 && (
+      {tasks.length===0 && (
         <p className="text-gray-400 text-sm">
           No tasks yet
         </p>
@@ -148,10 +282,31 @@ function Column({ title, tasks }:{ title:string, tasks:string[] }) {
           key={index}
           className="bg-white/10 p-4 rounded-xl shadow-sm mb-3 hover:bg-white/20 transition"
         >
-          {task}
+
+          <p className="mb-3">{task}</p>
+
+          <div className="flex gap-2">
+
+            <button
+              onClick={()=>setMoveMenu({task,index,column})}
+              className="text-xs bg-purple-600 px-3 py-1 rounded-lg"
+            >
+              Move
+            </button>
+
+            <button
+              onClick={()=>deleteTask(column,index)}
+              className="text-xs bg-red-500 px-3 py-1 rounded-lg"
+            >
+              Delete
+            </button>
+
+          </div>
+
         </div>
       ))}
 
     </div>
+
   );
 }
