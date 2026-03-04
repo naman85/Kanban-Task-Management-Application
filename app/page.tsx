@@ -148,22 +148,29 @@ function ThemeToggle({ isDark, toggle }: { isDark: boolean; toggle: () => void }
 // ── KanbanBoard ────────────────────────────────────────────────────────────────
 function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: boolean) => void }) {
   const [tasks, setTasks] = useState<Tasks>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("kanbanTasks");
-      if (saved) {
-        const parsed = JSON.parse(saved) as Tasks;
-        // Migrate old tasks saved before priority was added
-        const migrate = (list: Task[]) =>
-          list.map((t) => ({ priority: "medium" as Priority, description: "", ...t }));
-        return {
-          todo: migrate(parsed.todo ?? []),
-          progress: migrate(parsed.progress ?? []),
-          done: migrate(parsed.done ?? []),
-        };
-      }
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("kanbanTasks");
+    if (saved) {
+      const parsed = JSON.parse(saved) as Tasks;
+
+      // Safe migration for older saved tasks
+      const migrate = (list: any[]) =>
+        list.map((t) => ({
+          ...t,
+          priority: t.priority ?? "medium",
+          description: t.description ?? "",
+        }));
+
+      return {
+        todo: migrate(parsed.todo ?? []),
+        progress: migrate(parsed.progress ?? []),
+        done: migrate(parsed.done ?? []),
+      };
     }
-    return { todo: [], progress: [], done: [] };
-  });
+  }
+
+  return { todo: [], progress: [], done: [] };
+});
 
   const [newTask, setNewTask] = useState("");
   const [newDesc, setNewDesc] = useState("");
