@@ -10,9 +10,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragStartEvent,
-  DragEndEvent,
-  DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -23,21 +20,8 @@ import {
 import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-type Priority = "low" | "medium" | "high";
-type Task = { id: string; text: string; description: string; priority: Priority };
-type Tasks = { todo: Task[]; progress: Task[]; done: Task[] };
-type ColumnKey = keyof Tasks;
-
 // ── Priority config ────────────────────────────────────────────────────────────
-const PRIORITIES: {
-  value: Priority;
-  label: string;
-  color: string;
-  bg: string;
-  dot: string;
-  border: string;
-}[] = [
+const PRIORITIES = [
   {
     value: "low",
     label: "Low",
@@ -64,12 +48,12 @@ const PRIORITIES: {
   },
 ];
 
-function getPriority(p: Priority) {
-  return PRIORITIES.find((x) => x.value === p) ?? PRIORITIES[1]; // fallback to "medium"
+function getPriority(p) {
+  return PRIORITIES.find((x) => x.value === p) ?? PRIORITIES[1];
 }
 
 // ── Priority Badge ─────────────────────────────────────────────────────────────
-function PriorityBadge({ priority }: { priority: Priority }) {
+function PriorityBadge({ priority }) {
   const p = getPriority(priority);
   return (
     <span
@@ -90,17 +74,14 @@ export default function Home() {
 
   return (
     <main className={`relative h-screen overflow-hidden transition-colors duration-300 ${isDark ? "bg-black text-white" : "bg-gray-100 text-gray-900"}`}>
-      {/* Lottie animation — only show in dark mode */}
       {isDark && (
         <div className="absolute inset-0 pointer-events-none">
           <Lottie animationData={heroAnimation} loop className="w-full h-full object-cover" />
         </div>
       )}
 
-      {/* Overlay — only in dark mode */}
       {isDark && <div className="absolute inset-0 bg-black/50 pointer-events-none" />}
 
-      {/* Light mode decorative background */}
       {!isDark && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute -top-32 -left-32 w-96 h-96 bg-purple-200 rounded-full opacity-40 blur-3xl" />
@@ -108,7 +89,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Theme toggle on hero */}
       <div className="absolute top-5 right-6 z-20">
         <ThemeToggle isDark={isDark} toggle={() => setIsDark((d) => !d)} />
       </div>
@@ -129,7 +109,7 @@ export default function Home() {
 }
 
 // ── Theme Toggle ──────────────────────────────────────────────────────────────
-function ThemeToggle({ isDark, toggle }: { isDark: boolean; toggle: () => void }) {
+function ThemeToggle({ isDark, toggle }) {
   return (
     <button
       onClick={toggle}
@@ -146,38 +126,36 @@ function ThemeToggle({ isDark, toggle }: { isDark: boolean; toggle: () => void }
 }
 
 // ── KanbanBoard ────────────────────────────────────────────────────────────────
-function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: boolean) => void }) {
-  const [tasks, setTasks] = useState<Tasks>(() => {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("kanbanTasks");
-    if (saved) {
-      const parsed = JSON.parse(saved) as Tasks;
+function KanbanBoard({ isDark, setIsDark }) {
+  const [tasks, setTasks] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("kanbanTasks");
+      if (saved) {
+        const parsed = JSON.parse(saved);
 
-      // Safe migration for older saved tasks
-      const migrate = (list: any[]) =>
-        list.map((t) => ({
-          ...t,
-          priority: t.priority ?? "medium",
-          description: t.description ?? "",
-        }));
+        const migrate = (list) =>
+          list.map((t) => ({
+            ...t,
+            priority: t.priority ?? "medium",
+            description: t.description ?? "",
+          }));
 
-      return {
-        todo: migrate(parsed.todo ?? []),
-        progress: migrate(parsed.progress ?? []),
-        done: migrate(parsed.done ?? []),
-      };
+        return {
+          todo: migrate(parsed.todo ?? []),
+          progress: migrate(parsed.progress ?? []),
+          done: migrate(parsed.done ?? []),
+        };
+      }
     }
-  }
-
-  return { todo: [], progress: [], done: [] };
-});
+    return { todo: [], progress: [], done: [] };
+  });
 
   const [newTask, setNewTask] = useState("");
   const [newDesc, setNewDesc] = useState("");
-  const [newPriority, setNewPriority] = useState<Priority>("medium");
+  const [newPriority, setNewPriority] = useState("medium");
   const [search, setSearch] = useState("");
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [clonedTasks, setClonedTasks] = useState<Tasks | null>(null);
+  const [activeTask, setActiveTask] = useState(null);
+  const [clonedTasks, setClonedTasks] = useState(null);
 
   useEffect(() => {
     localStorage.setItem("kanbanTasks", JSON.stringify(tasks));
@@ -191,21 +169,21 @@ function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: bo
 
   const addTask = () => {
     if (!newTask.trim()) return;
-    const task: Task = { id: Date.now().toString(), text: newTask, description: newDesc, priority: newPriority };
+    const task = { id: Date.now().toString(), text: newTask, description: newDesc, priority: newPriority };
     setTasks((prev) => ({ ...prev, todo: [...prev.todo, task] }));
     setNewTask("");
     setNewDesc("");
     setNewPriority("medium");
   };
 
-  const deleteTask = (column: ColumnKey, id: string) => {
+  const deleteTask = (column, id) => {
     setTasks((prev) => ({
       ...prev,
       [column]: prev[column].filter((t) => t.id !== id),
     }));
   };
 
-  const editTask = (column: ColumnKey, id: string, value: string, desc: string, priority: Priority) => {
+  const editTask = (column, id, value, desc, priority) => {
     setTasks((prev) => ({
       ...prev,
       [column]: prev[column].map((t) =>
@@ -214,30 +192,29 @@ function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: bo
     }));
   };
 
-  const findColumn = (id: string): ColumnKey | null => {
-    if ((["todo", "progress", "done"] as ColumnKey[]).includes(id as ColumnKey))
-      return id as ColumnKey;
-    for (const col of ["todo", "progress", "done"] as ColumnKey[]) {
+  const findColumn = (id) => {
+    if (["todo", "progress", "done"].includes(id)) return id;
+    for (const col of ["todo", "progress", "done"]) {
       if (tasks[col].find((t) => t.id === id)) return col;
     }
     return null;
   };
 
-  const handleDragStart = (event: DragStartEvent) => {
+  const handleDragStart = (event) => {
     const { active } = event;
-    const col = findColumn(active.id as string);
+    const col = findColumn(active.id);
     if (!col) return;
     const task = tasks[col].find((t) => t.id === active.id);
     setActiveTask(task || null);
     setClonedTasks(tasks);
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragOver = (event) => {
     const { active, over } = event;
     if (!over) return;
 
-    const activeId = active.id as string;
-    const overId = over.id as string;
+    const activeId = active.id;
+    const overId = over.id;
 
     const fromCol = findColumn(activeId);
     const toCol = findColumn(overId);
@@ -262,15 +239,15 @@ function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: bo
     });
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (event) => {
     const { active, over } = event;
     setActiveTask(null);
     setClonedTasks(null);
 
     if (!over) return;
 
-    const activeId = active.id as string;
-    const overId = over.id as string;
+    const activeId = active.id;
+    const overId = over.id;
 
     const fromCol = findColumn(activeId);
     const toCol = findColumn(overId);
@@ -300,14 +277,14 @@ function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: bo
   return (
     <div className={`min-h-screen px-4 py-6 md:p-10 transition-colors duration-300 ${dk ? "bg-black text-white" : "bg-gray-100 text-gray-900"}`}>
       <div className="flex items-center justify-between max-w-6xl mx-auto mb-6 md:mb-10">
-        <div className="w-24" /> {/* spacer */}
+        <div className="w-24" />
         <h1 className="text-4xl font-bold">Kanban Board</h1>
         <div className="w-24 flex justify-end">
           <ThemeToggle isDark={isDark} toggle={() => setIsDark(!isDark)} />
         </div>
       </div>
 
-      {/* ── Search bar ── */}
+      {/* Search bar */}
       <div className="flex justify-center mb-4 px-0">
         <div className="relative w-full max-w-xl">
           <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${dk ? "text-white/30" : "text-gray-400"}`}>🔍</span>
@@ -328,10 +305,9 @@ function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: bo
         </div>
       </div>
 
-      {/* ── Add task row ── */}
+      {/* Add task row */}
       <div className="flex justify-center mb-10">
         <div className={`w-full max-w-2xl rounded-2xl border p-5 flex flex-col gap-3 ${dk ? "bg-white/10 border-white/10" : "bg-white border-gray-200 shadow-sm"}`}>
-          {/* Title + description */}
           <input
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
@@ -346,7 +322,6 @@ function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: bo
             rows={2}
             className={`border px-4 py-2.5 rounded-xl w-full outline-none focus:border-purple-400 text-sm resize-none ${dk ? "bg-white/10 border-white/20 text-white placeholder:text-white/30" : "bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-400"}`}
           />
-          {/* Priority + Add button row */}
           <div className="flex flex-wrap items-center gap-2">
             <span className={`text-xs font-semibold mr-1 ${dk ? "text-white/40" : "text-gray-400"}`}>Priority:</span>
             {PRIORITIES.map((p) => (
@@ -382,7 +357,7 @@ function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: bo
         onDragCancel={handleDragCancel}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8 max-w-6xl mx-auto">
-          {(["todo", "progress", "done"] as ColumnKey[]).map((col) => (
+          {["todo", "progress", "done"].map((col) => (
             <Column
               key={col}
               column={col}
@@ -400,7 +375,6 @@ function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: bo
           ))}
         </div>
 
-        {/* Drag overlay renders a floating copy while dragging */}
         <DragOverlay>
           {activeTask ? (
             <div className={`border border-purple-400 p-4 rounded-xl shadow-2xl opacity-90 ${dk ? "bg-white/20 text-white" : "bg-white text-gray-900"}`}>
@@ -418,21 +392,9 @@ function KanbanBoard({ isDark, setIsDark }: { isDark: boolean; setIsDark: (v: bo
 }
 
 // ── Column ─────────────────────────────────────────────────────────────────────
-function Column({
-  column,
-  tasks,
-  deleteTask,
-  editTask,
-  isDark,
-}: {
-  column: ColumnKey;
-  tasks: Task[];
-  deleteTask: (col: ColumnKey, id: string) => void;
-  editTask: (col: ColumnKey, id: string, value: string, desc: string, priority: Priority) => void;
-  isDark: boolean;
-}) {
+function Column({ column, tasks, deleteTask, editTask, isDark }) {
   const dk = isDark;
-  const titles: Record<ColumnKey, string> = {
+  const titles = {
     todo: "Todo",
     progress: "In Progress",
     done: "Done",
@@ -440,7 +402,7 @@ function Column({
 
   const { setNodeRef, isOver } = useDroppable({ id: column });
 
-  const PRIORITY_ORDER: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
+  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
   const sortedTasks = [...tasks].sort(
     (a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
   );
@@ -483,19 +445,7 @@ function Column({
 }
 
 // ── TaskCard ───────────────────────────────────────────────────────────────────
-function TaskCard({
-  task,
-  column,
-  deleteTask,
-  editTask,
-  isDark,
-}: {
-  task: Task;
-  column: ColumnKey;
-  deleteTask: (col: ColumnKey, id: string) => void;
-  editTask: (col: ColumnKey, id: string, value: string, desc: string, priority: Priority) => void;
-  isDark: boolean;
-}) {
+function TaskCard({ task, column, deleteTask, editTask, isDark }) {
   const dk = isDark;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
@@ -509,7 +459,7 @@ function TaskCard({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(task.text);
   const [editDesc, setEditDesc] = useState(task.description ?? "");
-  const [editPriority, setEditPriority] = useState<Priority>(task.priority);
+  const [editPriority, setEditPriority] = useState(task.priority);
 
   const p = getPriority(task.priority);
 
@@ -519,7 +469,6 @@ function TaskCard({
       style={style}
       className={`p-4 rounded-xl mb-3 shadow border-l-2 ${p.border} ${dk ? "bg-white/10" : "bg-gray-50 border border-gray-200"}`}
     >
-      {/* Drag handle row — also shows priority badge */}
       <div
         {...attributes}
         {...listeners}
@@ -545,8 +494,6 @@ function TaskCard({
             rows={2}
             className={`border px-2 py-1.5 w-full mb-3 rounded outline-none focus:border-purple-400 text-sm resize-none ${dk ? "bg-black/50 border-white/20 text-white placeholder:text-white/30" : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"}`}
           />
-
-          {/* Priority picker in edit mode */}
           <div className="flex gap-1.5 mb-3">
             {PRIORITIES.map((pri) => (
               <button
@@ -563,7 +510,6 @@ function TaskCard({
               </button>
             ))}
           </div>
-
           <div className="flex gap-2">
             <button
               onClick={() => {
